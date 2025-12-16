@@ -2,6 +2,7 @@
 
 import os
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -21,6 +22,11 @@ class Character:
 
     def get_system_prompt(self) -> str:
         """Generate the system prompt from character configuration."""
+        # Get current date and time in local timezone
+        now = datetime.now()
+        current_datetime = now.strftime("%A, %B %d, %Y at %H:%M")
+        date_context = f"\n\n## Current Date and Time\nIt is currently {current_datetime}. Use this to interpret relative dates like 'today', 'tomorrow', 'next week', etc."
+
         user_context = ""
         if self.user_name:
             user_context = f"\n\n## User\nYou are talking to {self.user_name}. Address them by name when appropriate."
@@ -34,7 +40,7 @@ You have access to tools that let you check the user's calendar and reminders. U
 - You want to proactively reference something relevant from their calendar
 Only use tools when genuinely helpful. Don't force tool usage into every response."""
 
-        return f"""You are {self.name}, an AI companion with the following characteristics:
+        return f"""You are {self.name}, an AI companion with the following characteristics:{date_context}
 
 ## Personality
 {self.personality.strip()}
