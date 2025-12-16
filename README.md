@@ -14,7 +14,22 @@ A personal AI companion bot for Telegram and Discord with long-term memory. Uses
 
 ## Prerequisites
 
-### 1. Install Ollama
+### 1. Install uv
+
+[uv](https://docs.astral.sh/uv/) is used for Python dependency management.
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### 2. Install Docker
+
+Docker is required for running the Qdrant vector database.
+
+- **macOS/Windows:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- **Linux:** [Docker Engine](https://docs.docker.com/engine/install/)
+
+### 3. Install Ollama
 
 Download and install Ollama from [ollama.com/download](https://ollama.com/download).
 
@@ -33,7 +48,7 @@ Start the Ollama service:
 ollama serve
 ```
 
-### 2. Pull Required Models
+### 4. Pull Required Models
 
 You need two models - a chat model and an embedding model:
 
@@ -49,14 +64,7 @@ ollama pull nomic-embed-text
 >
 > Browse available models at [ollama.com/library](https://ollama.com/library)
 
-### 3. Install Docker
-
-Docker is required for running the bot and Qdrant database.
-
-- **macOS/Windows:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- **Linux:** [Docker Engine](https://docs.docker.com/engine/install/)
-
-### 4. Set Up a Bot Platform
+### 5. Set Up a Bot Platform
 
 You can use Telegram, Discord, or both.
 
@@ -151,24 +159,28 @@ proactive_prompts:
 ### Start the Bot
 
 ```bash
-docker compose up -d
+./run.sh
 ```
 
 This starts:
-- **chatty-bot** - The bot (Telegram and/or Discord based on config)
-- **chatty-qdrant** - Vector database for memory storage
+- **Qdrant** - Vector database for memory storage (Docker container)
+- **Chatty Bot** - The bot application (via uv)
 
-### View Logs
+The script automatically:
+- Starts the Qdrant container
+- Waits for Qdrant to be healthy
+- Launches the Python application with your `.env` configuration
+- Handles graceful shutdown on Ctrl+C
+
+### View Qdrant Logs
 
 ```bash
-docker compose logs -f bot
+docker compose logs -f qdrant
 ```
 
 ### Stop the Bot
 
-```bash
-docker compose down
-```
+Press `Ctrl+C` in the terminal running the bot. The script will gracefully shut down both the bot and Qdrant.
 
 ### Reset Memory
 
@@ -226,14 +238,14 @@ OLLAMA_CHAT_MODEL=llama3.2:3b
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │   Telegram      │◄────│                 │────►│    Discord      │
 │   (User)        │     │   Chatty Bot    │     │    (User)       │
-└─────────────────┘     │   (Docker)      │     └─────────────────┘
+└─────────────────┘     │   (uv)          │     └─────────────────┘
                         └────────┬────────┘
                                  │
                     ┌────────────┴────────────┐
                     │                         │
            ┌────────▼────────┐    ┌──────────▼──────────┐
            │     Ollama      │    │       Qdrant        │
-           │   (Host/LLM)    │    │   (Vector DB)       │
+           │   (Host/LLM)    │    │   (Docker)          │
            └─────────────────┘    └─────────────────────┘
 ```
 
@@ -269,7 +281,7 @@ ollama pull nomic-embed-text
 
 1. Check that Ollama is running: `ollama list`
 2. Verify your user ID is correct for the platform you're using
-3. Check logs: `docker compose logs -f bot`
+3. Check the terminal output for errors
 
 ### Connection refused to Ollama
 
@@ -299,19 +311,25 @@ Slash commands may take up to an hour to sync globally. Try:
 2. Wait a few minutes
 3. If still not working, check logs for sync errors
 
-## Development
+### Qdrant connection issues
 
-Run locally without Docker:
+Check that the Qdrant container is running:
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+docker compose ps
+docker compose logs qdrant
+```
 
-# Run Qdrant separately
-docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
+## Development
+
+Run manually without the script:
+
+```bash
+# Start Qdrant
+docker compose up -d qdrant
 
 # Run the bot
-python -m src.main
+uv run --env-file .env -m src.main
 ```
 
 ## License
