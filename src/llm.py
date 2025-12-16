@@ -8,9 +8,9 @@ import ollama
 
 logger = logging.getLogger(__name__)
 
-# Model configuration
-CHAT_MODEL = "gpt-oss:20b"
-EMBEDDING_MODEL = "nomic-embed-text"
+# Model configuration (can be overridden via environment variables)
+CHAT_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "gpt-oss:20b")
+EMBEDDING_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 
 # Creative settings for the chat model
 CHAT_OPTIONS = {
