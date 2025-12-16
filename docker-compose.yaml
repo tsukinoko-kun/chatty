@@ -25,10 +25,12 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - ./data/qdrant:/qdrant/storage
+      - qdrant_storage:/qdrant/storage
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:6333/readyz"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+volumes:
+  qdrant_storage:
