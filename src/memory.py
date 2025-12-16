@@ -35,7 +35,7 @@ class MemoryManager:
             host: Qdrant host (defaults to QDRANT_HOST env var)
             port: Qdrant port (defaults to QDRANT_PORT env var)
         """
-        self.host = host or os.getenv("QDRANT_HOST", "localhost")
+        self.host = host or os.getenv("QDRANT_HOST", "127.0.0.1")
         self.port = port or int(os.getenv("QDRANT_PORT", "6333"))
         self.embed = embed_func
 

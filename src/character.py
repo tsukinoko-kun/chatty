@@ -1,5 +1,6 @@
 """Character configuration loader."""
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -53,8 +54,26 @@ Your responses should feel natural and true to your personality."""
         return self.proactive_prompts.get(prompt_type)
 
 
-def load_character(config_path: str = "/app/character.yaml") -> Character:
+def load_character(config_path: Optional[str] = None) -> Character:
     """Load character configuration from YAML file."""
+    if config_path is None:
+        # Check env var first, then common locations
+        config_path = os.getenv("CHARACTER_CONFIG")
+        if config_path is None:
+            # Try relative to current working directory
+            cwd_path = Path.cwd() / "character.yaml"
+            # Try relative to this module's parent (project root)
+            module_path = Path(__file__).parent.parent / "character.yaml"
+
+            if cwd_path.exists():
+                config_path = str(cwd_path)
+            elif module_path.exists():
+                config_path = str(module_path)
+            else:
+                raise FileNotFoundError(
+                    f"Character config not found. Checked: {cwd_path}, {module_path}"
+                )
+
     path = Path(config_path)
 
     if not path.exists():

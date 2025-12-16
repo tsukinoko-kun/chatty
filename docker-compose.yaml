@@ -1,25 +1,4 @@
 services:
-  bot:
-    build: .
-    container_name: chatty-bot
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - OLLAMA_HOST=http://host.docker.internal:11434
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      # Discord configuration (optional - set in .env file)
-      # - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
-      # - DISCORD_USER_ID=${DISCORD_USER_ID}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - ./character.yaml:/app/character.yaml:ro
-    depends_on:
-      qdrant:
-        condition: service_healthy
-
   qdrant:
     image: qdrant/qdrant:latest
     container_name: chatty-qdrant

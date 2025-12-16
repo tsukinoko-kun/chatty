@@ -1,0 +1,17 @@
+[project]
+name = "chatty"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "apscheduler==3.10.4",
+    "audioop-lts ; python_version >= '3.13'",
+    "discord-py==2.4.0",
+    "ollama==0.4.4",
+    "pyobjc-framework-eventkit==10.3.1 ; sys_platform == 'darwin'",
+    "python-telegram-bot==21.7",
+    "pyyaml==6.0.2",
+    "qdrant-client==1.12.1",
+    "requests>=2.32.5",
+]
