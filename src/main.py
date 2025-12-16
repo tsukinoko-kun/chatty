@@ -52,6 +52,13 @@ async def main() -> None:
         # Initialize the application
         await application.initialize()
         
+        # Fetch the user's name to provide context to the LLM
+        user_name = await bot.fetch_user_name()
+        if user_name:
+            logger.info(f"LLM will address user as: {user_name}")
+        else:
+            logger.warning("Could not fetch user name, LLM will not have user context")
+        
         # Start the scheduler
         scheduler.start()
         

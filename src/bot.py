@@ -228,6 +228,29 @@ class ChattyBot:
             logger.error(f"Failed to send proactive message: {e}")
             return False
     
+    async def fetch_user_name(self) -> str | None:
+        """
+        Fetch the user's name from Telegram using their user ID.
+        
+        Returns:
+            The user's first name, or None if it couldn't be fetched
+        """
+        if not self.application:
+            logger.error("Cannot fetch user name: application not initialized")
+            return None
+        
+        try:
+            chat = await self.application.bot.get_chat(self.allowed_user_id)
+            # Prefer first_name, fall back to username
+            user_name = chat.first_name or chat.username
+            if user_name:
+                logger.info(f"Fetched user name: {user_name}")
+                self.character.user_name = user_name
+            return user_name
+        except Exception as e:
+            logger.warning(f"Could not fetch user name for ID {self.allowed_user_id}: {e}")
+            return None
+    
     def create_application(self) -> Application:
         """Create and configure the Telegram application."""
         self.application = (
