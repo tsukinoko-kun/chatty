@@ -23,26 +23,26 @@ CHAT_OPTIONS = {
 
 class LLMClient:
     """Client for interacting with Ollama."""
-    
+
     def __init__(self, host: Optional[str] = None):
         """
         Initialize the LLM client.
-        
+
         Args:
             host: Ollama host URL (defaults to OLLAMA_HOST env var)
         """
         self.host = host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
         self.client = ollama.Client(host=self.host)
-        
+
         # Verify models are available
         self._check_models()
-    
+
     def _check_models(self) -> None:
         """Check that required models are available."""
         try:
             models = self.client.list()
             model_names = [m.model for m in models.models]
-            
+
             # Check for chat model (allow partial match for tags)
             chat_model_base = CHAT_MODEL.split(":")[0]
             if not any(chat_model_base in name for name in model_names):
@@ -51,7 +51,7 @@ class LLMClient:
                     f"Available models: {model_names}. "
                     f"Please run: ollama pull {CHAT_MODEL}"
                 )
-            
+
             # Check for embedding model
             embed_model_base = EMBEDDING_MODEL.split(":")[0]
             if not any(embed_model_base in name for name in model_names):
@@ -61,7 +61,7 @@ class LLMClient:
                 )
         except Exception as e:
             logger.error(f"Failed to check models: {e}")
-    
+
     def generate_response(
         self,
         system_prompt: str,
@@ -70,12 +70,12 @@ class LLMClient:
     ) -> str:
         """
         Generate a response using the chat model.
-        
+
         Args:
             system_prompt: The system prompt (character definition)
             messages: Recent conversation history as list of {"role": ..., "content": ...}
             user_message: The current user message
-            
+
         Returns:
             The generated response text
         """
@@ -83,20 +83,24 @@ class LLMClient:
         full_messages = [
             {"role": "system", "content": system_prompt},
         ]
-        
+
         # Add conversation history
         for msg in messages:
-            full_messages.append({
-                "role": msg["role"],
-                "content": msg["content"],
-            })
-        
+            full_messages.append(
+                {
+                    "role": msg["role"],
+                    "content": msg["content"],
+                }
+            )
+
         # Add the current user message
-        full_messages.append({
-            "role": "user",
-            "content": user_message,
-        })
-        
+        full_messages.append(
+            {
+                "role": "user",
+                "content": user_message,
+            }
+        )
+
         try:
             response = self.client.chat(
                 model=CHAT_MODEL,
@@ -107,7 +111,7 @@ class LLMClient:
         except Exception as e:
             logger.error(f"Failed to generate response: {e}")
             raise
-    
+
     def generate_proactive_message(
         self,
         system_prompt: str,
@@ -117,27 +121,35 @@ class LLMClient:
     ) -> str:
         """
         Generate a proactive message to send to the user.
-        
+
         Args:
             system_prompt: The character system prompt
             proactive_prompt: Instructions for generating the proactive message
             recent_messages: Recent conversation history
             user_facts: Known facts about the user
-            
+
         Returns:
             The generated proactive message
         """
         # Build context about the user
-        facts_text = "\n".join(f"- {fact}" for fact in user_facts) if user_facts else "No specific facts recorded yet."
-        
+        facts_text = (
+            "\n".join(f"- {fact}" for fact in user_facts)
+            if user_facts
+            else "No specific facts recorded yet."
+        )
+
         # Build recent conversation summary
         recent_text = ""
         if recent_messages:
             recent_text = "\n\nRecent conversation:\n"
             for msg in recent_messages[-5:]:  # Last 5 messages
                 role = "User" if msg["role"] == "user" else "You"
-                recent_text += f"{role}: {msg['content'][:200]}...\n" if len(msg['content']) > 200 else f"{role}: {msg['content']}\n"
-        
+                recent_text += (
+                    f"{role}: {msg['content'][:200]}...\n"
+                    if len(msg["content"]) > 200
+                    else f"{role}: {msg['content']}\n"
+                )
+
         prompt = f"""{proactive_prompt}
 
 What you know about the user:
@@ -150,7 +162,7 @@ Generate a natural, in-character message to send. Just write the message itself,
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ]
-        
+
         try:
             response = self.client.chat(
                 model=CHAT_MODEL,
@@ -161,7 +173,7 @@ Generate a natural, in-character message to send. Just write the message itself,
         except Exception as e:
             logger.error(f"Failed to generate proactive message: {e}")
             raise
-    
+
     def extract_facts(
         self,
         user_message: str,
@@ -169,16 +181,20 @@ Generate a natural, in-character message to send. Just write the message itself,
     ) -> list[str]:
         """
         Extract new facts about the user from their message.
-        
+
         Args:
             user_message: The user's message
             existing_facts: Facts we already know
-            
+
         Returns:
             List of new facts (empty if none found)
         """
-        existing_text = "\n".join(f"- {f}" for f in existing_facts) if existing_facts else "None recorded yet."
-        
+        existing_text = (
+            "\n".join(f"- {f}" for f in existing_facts)
+            if existing_facts
+            else "None recorded yet."
+        )
+
         prompt = f"""Analyze this user message and extract any personal facts about them that would be worth remembering for future conversations.
 
 Facts can include:
@@ -202,14 +218,16 @@ Be selective - only extract meaningful, personal facts, not trivial conversation
             response = self.client.chat(
                 model=CHAT_MODEL,
                 messages=[{"role": "user", "content": prompt}],
-                options={"temperature": 0.3},  # Lower temperature for factual extraction
+                options={
+                    "temperature": 0.3
+                },  # Lower temperature for factual extraction
             )
-            
+
             content = response.message.content.strip()
-            
+
             if content == "NONE" or not content:
                 return []
-            
+
             # Parse facts from response
             facts = []
             for line in content.split("\n"):
@@ -219,20 +237,20 @@ Be selective - only extract meaningful, personal facts, not trivial conversation
                 elif line and not line.startswith("#"):
                     # Handle lines without bullet points
                     facts.append(line)
-            
+
             return facts
-            
+
         except Exception as e:
             logger.error(f"Failed to extract facts: {e}")
             return []
-    
+
     def embed(self, text: str) -> list[float]:
         """
         Generate an embedding for the given text.
-        
+
         Args:
             text: Text to embed
-            
+
         Returns:
             Embedding vector as list of floats
         """
@@ -245,4 +263,3 @@ Be selective - only extract meaningful, personal facts, not trivial conversation
         except Exception as e:
             logger.error(f"Failed to generate embedding: {e}")
             raise
-
