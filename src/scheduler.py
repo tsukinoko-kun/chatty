@@ -3,13 +3,14 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 if TYPE_CHECKING:
     from .bot import ChattyBot
+    from .discord_bot import DiscordBot
 
 logger = logging.getLogger(__name__)
 
@@ -20,10 +21,32 @@ INACTIVITY_THRESHOLD_HOURS = 24
 CHECK_INTERVAL_HOURS = 1
 
 
+@runtime_checkable
+class ProactiveBot(Protocol):
+    """Protocol for bots that support proactive messaging."""
+
+    @property
+    def memory(self): ...
+
+    @property
+    def llm(self): ...
+
+    @property
+    def character(self): ...
+
+    async def send_proactive_message(self, message: str) -> bool: ...
+
+    async def fetch_user_name(self) -> str | None: ...
+
+
+# Type alias for supported bot types
+Bot = "ChattyBot | DiscordBot"
+
+
 class ProactiveScheduler:
     """Schedules proactive messages based on user inactivity."""
 
-    def __init__(self, bot: "ChattyBot"):
+    def __init__(self, bot: Bot):
         """
         Initialize the scheduler.
 

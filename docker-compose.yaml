@@ -9,6 +9,9 @@ services:
       - OLLAMA_HOST=http://host.docker.internal:11434
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
+      # Discord configuration (optional - set in .env file)
+      # - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      # - DISCORD_USER_ID=${DISCORD_USER_ID}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

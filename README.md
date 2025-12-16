@@ -1,6 +1,6 @@
 # Chatty
 
-A personal AI companion bot for Telegram with long-term memory. Uses local LLMs via Ollama and stores conversation history in Qdrant vector database for semantic recall.
+A personal AI companion bot for Telegram and Discord with long-term memory. Uses local LLMs via Ollama and stores conversation history in Qdrant vector database for semantic recall.
 
 ## Features
 
@@ -8,8 +8,9 @@ A personal AI companion bot for Telegram with long-term memory. Uses local LLMs 
 - 🧠 Long-term memory with semantic search (remembers relevant past conversations)
 - 📝 Automatic fact extraction (learns things about you over time)
 - 💬 Proactive messaging (reaches out if you've been quiet)
-- 🔒 Single-user mode (responds only to your Telegram account)
+- 🔒 Single-user mode (responds only to your account)
 - 🏠 Fully local/self-hosted (no data sent to cloud AI services)
+- 📱 Multi-platform support (Telegram and/or Discord)
 
 ## Prerequisites
 
@@ -55,7 +56,11 @@ Docker is required for running the bot and Qdrant database.
 - **macOS/Windows:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - **Linux:** [Docker Engine](https://docs.docker.com/engine/install/)
 
-### 4. Create a Telegram Bot
+### 4. Set Up a Bot Platform
+
+You can use Telegram, Discord, or both.
+
+#### Option A: Telegram Bot
 
 1. Open Telegram and search for [@BotFather](https://t.me/BotFather)
 2. Send `/newbot` and follow the prompts
@@ -64,13 +69,32 @@ Docker is required for running the bot and Qdrant database.
 
 For more details, see the [official Telegram Bot tutorial](https://core.telegram.org/bots/tutorial).
 
-### 5. Get Your Telegram User ID
-
-The bot only responds to a single authorized user. You need your Telegram user ID:
+**Get Your Telegram User ID:**
 
 1. Search for [@userinfobot](https://t.me/userinfobot) on Telegram
 2. Send `/start` - it will reply with your user ID
 3. Save this numeric ID
+
+#### Option B: Discord Bot
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click "New Application" and give it a name
+3. Go to the "Bot" section in the left sidebar
+4. Click "Reset Token" and save the **bot token**
+5. Enable these Privileged Gateway Intents:
+   - Message Content Intent
+6. Go to "OAuth2" > "URL Generator"
+7. Select scopes: `bot`, `applications.commands`
+8. Select bot permissions: `Send Messages`, `Read Message History`
+9. Copy the generated URL (User Install) and open it to invite the bot to a server (required for the bot to work, even for DMs)
+
+**Get Your Discord User ID:**
+
+1. Enable Developer Mode in Discord (User Settings > App Settings > Advanced > Developer Mode)
+2. Right-click on your username and select "Copy User ID"
+3. Save this numeric ID
+
+**DM the bot:** Open `https://discord.com/users/` + the bots Application ID in your browser.
 
 ## Setup
 
@@ -86,15 +110,21 @@ cd chatty
 Create a `.env` file in the project root:
 
 ```bash
-# Required
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-TELEGRAM_USER_ID=your_numeric_user_id
+# Telegram (optional - set if using Telegram)
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+TELEGRAM_USER_ID=your_telegram_numeric_user_id
+
+# Discord (optional - set if using Discord)
+DISCORD_BOT_TOKEN=your_discord_bot_token_here
+DISCORD_USER_ID=your_discord_numeric_user_id
 
 # Optional - uncomment to override defaults
 # OLLAMA_HOST=http://localhost:11434
 # OLLAMA_CHAT_MODEL=gpt-oss:20b
 # OLLAMA_EMBED_MODEL=nomic-embed-text
 ```
+
+> **Note:** You must configure at least one platform (Telegram or Discord). You can use both simultaneously.
 
 ### 3. Customize Character (Optional)
 
@@ -125,7 +155,7 @@ docker compose up -d
 ```
 
 This starts:
-- **chatty-bot** - The Telegram bot
+- **chatty-bot** - The bot (Telegram and/or Discord based on config)
 - **chatty-qdrant** - Vector database for memory storage
 
 ### View Logs
@@ -150,12 +180,26 @@ docker compose down -v
 
 ## Bot Commands
 
+### Telegram Commands
+
 | Command | Description |
 |---------|-------------|
 | `/start` | Start a conversation |
 | `/help` | Show help message |
 | `/facts` | See what the bot remembers about you |
 | `/forget` | Clear memory (not yet implemented) |
+
+### Discord Commands
+
+Discord uses slash commands. Type `/` in a DM with the bot to see available commands:
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show help message |
+| `/facts` | See what the bot remembers about you |
+| `/forget` | Clear memory (not yet implemented) |
+
+> **Note:** The Discord bot only responds to direct messages (DMs) from the configured user.
 
 ## Model Configuration
 
@@ -179,10 +223,11 @@ OLLAMA_CHAT_MODEL=llama3.2:3b
 ## Architecture
 
 ```
-┌─────────────────┐     ┌─────────────────┐
-│   Telegram      │◄────│   Chatty Bot    │
-│   (User)        │     │   (Docker)      │
-└─────────────────┘     └────────┬────────┘
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Telegram      │◄────│                 │────►│    Discord      │
+│   (User)        │     │   Chatty Bot    │     │    (User)       │
+└─────────────────┘     │   (Docker)      │     └─────────────────┘
+                        └────────┬────────┘
                                  │
                     ┌────────────┴────────────┐
                     │                         │
@@ -191,6 +236,23 @@ OLLAMA_CHAT_MODEL=llama3.2:3b
            │   (Host/LLM)    │    │   (Vector DB)       │
            └─────────────────┘    └─────────────────────┘
 ```
+
+Both platforms share the same:
+- **Memory** - Conversations from either platform are stored together
+- **Character** - Same personality across platforms
+- **LLM** - Same model generates responses
+
+## Environment Variables Reference
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | If using Telegram | Telegram bot token from BotFather |
+| `TELEGRAM_USER_ID` | If using Telegram | Your Telegram numeric user ID |
+| `DISCORD_BOT_TOKEN` | If using Discord | Discord bot token from Developer Portal |
+| `DISCORD_USER_ID` | If using Discord | Your Discord numeric user ID |
+| `OLLAMA_HOST` | No | Ollama API endpoint (default: `http://localhost:11434`) |
+| `OLLAMA_CHAT_MODEL` | No | Chat model name (default: `gpt-oss:20b`) |
+| `OLLAMA_EMBED_MODEL` | No | Embedding model name (default: `nomic-embed-text`) |
 
 ## Troubleshooting
 
@@ -206,7 +268,7 @@ ollama pull nomic-embed-text
 ### Bot not responding
 
 1. Check that Ollama is running: `ollama list`
-2. Verify your `TELEGRAM_USER_ID` is correct
+2. Verify your user ID is correct for the platform you're using
 3. Check logs: `docker compose logs -f bot`
 
 ### Connection refused to Ollama
@@ -222,6 +284,20 @@ Environment="OLLAMA_HOST=0.0.0.0"
 sudo systemctl daemon-reload
 sudo systemctl restart ollama
 ```
+
+### Discord bot not responding to DMs
+
+1. Make sure the bot is invited to at least one server (required for Discord to route DMs)
+2. Verify Message Content Intent is enabled in the Discord Developer Portal
+3. Check that your `DISCORD_USER_ID` is correct
+4. The bot only responds to DMs, not messages in servers
+
+### Discord slash commands not showing
+
+Slash commands may take up to an hour to sync globally. Try:
+1. Restart the bot
+2. Wait a few minutes
+3. If still not working, check logs for sync errors
 
 ## Development
 
@@ -241,4 +317,3 @@ python -m src.main
 ## License
 
 MIT
-
