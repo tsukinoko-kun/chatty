@@ -268,3 +268,5 @@ class MemoryManager:
         collection_info = self.client.get_collection(CHAT_HISTORY_COLLECTION)
         return collection_info.points_count
 
+
+
