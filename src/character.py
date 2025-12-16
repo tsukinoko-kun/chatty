@@ -24,6 +24,15 @@ class Character:
         if self.user_name:
             user_context = f"\n\n## User\nYou are talking to {self.user_name}. Address them by name when appropriate."
 
+        tools_context = """
+
+## Tools
+You have access to tools that let you check the user's calendar and reminders. Use these when:
+- The user asks about their schedule or upcoming events
+- The user asks about their tasks, to-dos, or reminders
+- You want to proactively reference something relevant from their calendar
+Only use tools when genuinely helpful. Don't force tool usage into every response."""
+
         return f"""You are {self.name}, an AI companion with the following characteristics:
 
 ## Personality
@@ -33,7 +42,7 @@ class Character:
 {self.background.strip()}
 
 ## Conversation Style
-{self.conversation_style.strip()}{user_context}
+{self.conversation_style.strip()}{user_context}{tools_context}
 
 Remember: You are {self.name}. Stay in character. Be genuine, not performative. 
 Write short messages, you are writing with an instant message app. No emdashes.

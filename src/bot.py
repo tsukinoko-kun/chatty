@@ -291,6 +291,7 @@ class ChattyBot:
 def create_bot() -> ChattyBot:
     """Create a ChattyBot instance from environment variables."""
     from .character import load_character
+    from .tools import create_default_registry
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
@@ -308,8 +309,11 @@ def create_bot() -> ChattyBot:
     # Load character
     character = load_character()
 
-    # Create LLM client
-    llm = LLMClient()
+    # Create tool registry with default tools (calendar, reminders)
+    tool_registry = create_default_registry()
+
+    # Create LLM client with tools
+    llm = LLMClient(tool_registry=tool_registry)
 
     # Create memory manager with embedding function
     memory = MemoryManager(embed_func=llm.embed)

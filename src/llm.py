@@ -1,10 +1,13 @@
-"""Ollama LLM client wrapper."""
+"""Ollama LLM client wrapper with tool calling support."""
 
+import json
 import logging
 import os
 from typing import Optional
 
 import ollama
+
+from .tools import ToolExecutor, ToolRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -20,19 +23,39 @@ CHAT_OPTIONS = {
     "repeat_penalty": 1.1,
 }
 
+# Lower temperature for tool-calling to improve reliability
+TOOL_CALL_OPTIONS = {
+    "temperature": 0.3,
+    "top_p": 0.9,
+    "top_k": 40,
+    "repeat_penalty": 1.1,
+}
+
+# Maximum number of tool call iterations to prevent infinite loops
+MAX_TOOL_ITERATIONS = 5
+
 
 class LLMClient:
-    """Client for interacting with Ollama."""
+    """Client for interacting with Ollama with tool calling support."""
 
-    def __init__(self, host: Optional[str] = None):
+    def __init__(
+        self,
+        host: Optional[str] = None,
+        tool_registry: Optional[ToolRegistry] = None,
+    ):
         """
         Initialize the LLM client.
 
         Args:
             host: Ollama host URL (defaults to OLLAMA_HOST env var)
+            tool_registry: Registry of tools available for the LLM to use
         """
         self.host = host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
         self.client = ollama.Client(host=self.host)
+
+        # Tool calling setup
+        self.tool_registry = tool_registry
+        self.tool_executor = ToolExecutor(tool_registry) if tool_registry else None
 
         # Verify models are available
         self._check_models()
@@ -62,6 +85,12 @@ class LLMClient:
         except Exception as e:
             logger.error(f"Failed to check models: {e}")
 
+    def _get_tools_for_ollama(self) -> list[dict] | None:
+        """Get tools in Ollama format, or None if no tools available."""
+        if not self.tool_registry or len(self.tool_registry) == 0:
+            return None
+        return self.tool_registry.get_ollama_tools()
+
     def generate_response(
         self,
         system_prompt: str,
@@ -69,7 +98,7 @@ class LLMClient:
         user_message: str,
     ) -> str:
         """
-        Generate a response using the chat model.
+        Generate a response using the chat model, with tool calling support.
 
         Args:
             system_prompt: The system prompt (character definition)
@@ -101,16 +130,102 @@ class LLMClient:
             }
         )
 
+        # Get tools if available
+        tools = self._get_tools_for_ollama()
+
         try:
-            response = self.client.chat(
-                model=CHAT_MODEL,
-                messages=full_messages,
-                options=CHAT_OPTIONS,
-            )
-            return response.message.content
+            if tools:
+                return self._generate_with_tools(full_messages, tools)
+            else:
+                return self._generate_simple(full_messages)
         except Exception as e:
             logger.error(f"Failed to generate response: {e}")
             raise
+
+    def _generate_simple(self, messages: list[dict]) -> str:
+        """Generate a response without tool calling."""
+        response = self.client.chat(
+            model=CHAT_MODEL,
+            messages=messages,
+            options=CHAT_OPTIONS,
+        )
+        return response.message.content
+
+    def _generate_with_tools(self, messages: list[dict], tools: list[dict]) -> str:
+        """Generate a response with tool calling support."""
+        current_messages = messages.copy()
+        iterations = 0
+
+        while iterations < MAX_TOOL_ITERATIONS:
+            iterations += 1
+
+            # Use lower temperature for tool calling
+            options = TOOL_CALL_OPTIONS if iterations == 1 else CHAT_OPTIONS
+
+            response = self.client.chat(
+                model=CHAT_MODEL,
+                messages=current_messages,
+                tools=tools,
+                options=options,
+            )
+
+            # Check if the model wants to call tools
+            if response.message.tool_calls:
+                logger.info(
+                    f"Model requested {len(response.message.tool_calls)} tool call(s)"
+                )
+
+                # Add the assistant's response with tool calls
+                current_messages.append(
+                    {
+                        "role": "assistant",
+                        "content": response.message.content or "",
+                        "tool_calls": [
+                            {
+                                "id": tc.function.name,  # Ollama doesn't provide IDs, use name
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments,
+                                },
+                            }
+                            for tc in response.message.tool_calls
+                        ],
+                    }
+                )
+
+                # Execute each tool and add results
+                for tool_call in response.message.tool_calls:
+                    tool_name = tool_call.function.name
+                    tool_args = tool_call.function.arguments
+
+                    # Arguments may be a dict or a JSON string depending on Ollama version
+                    if isinstance(tool_args, str):
+                        try:
+                            tool_args = json.loads(tool_args)
+                        except json.JSONDecodeError:
+                            tool_args = {}
+
+                    # Execute the tool
+                    result = self.tool_executor.execute(tool_name, tool_args)
+
+                    # Add tool result to messages
+                    current_messages.append(
+                        {
+                            "role": "tool",
+                            "content": result,
+                        }
+                    )
+
+                # Continue the loop to let the model process tool results
+                continue
+
+            # No tool calls, return the final response
+            return response.message.content
+
+        # Exceeded max iterations
+        logger.warning(f"Tool calling exceeded {MAX_TOOL_ITERATIONS} iterations")
+        return response.message.content or "I'm having trouble processing that request."
 
     def generate_proactive_message(
         self,

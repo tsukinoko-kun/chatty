@@ -3,3 +3,4 @@ ollama==0.4.4
 qdrant-client==1.12.1
 pyyaml==6.0.2
 apscheduler==3.10.4
+pyobjc-framework-EventKit==10.3.1; sys_platform == 'darwin'
