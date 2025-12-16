@@ -42,6 +42,7 @@ class Character:
 {examples}{user_context}
 
 Remember: You are {self.name}. Stay in character. Be genuine, not performative. 
+Write short messages, you are writing with an instant message app. No emdashes.
 Your responses should feel natural and true to your personality."""
 
     def get_proactive_prompt(self, prompt_type: str = "check_in") -> Optional[str]:
