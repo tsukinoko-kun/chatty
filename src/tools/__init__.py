@@ -2,9 +2,23 @@
 
 from .base import Tool, ToolExecutor, ToolRegistry
 from .calendar import CalendarTool
-from .reminders import RemindersTool
+from .reminders import (
+    CompleteReminderTool,
+    CreateReminderTool,
+    EditReminderTool,
+    RemindersTool,
+)
 
-__all__ = ["Tool", "ToolRegistry", "ToolExecutor", "CalendarTool", "RemindersTool"]
+__all__ = [
+    "Tool",
+    "ToolRegistry",
+    "ToolExecutor",
+    "CalendarTool",
+    "RemindersTool",
+    "CreateReminderTool",
+    "EditReminderTool",
+    "CompleteReminderTool",
+]
 
 
 def create_default_registry() -> ToolRegistry:
@@ -12,4 +26,7 @@ def create_default_registry() -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(CalendarTool())
     registry.register(RemindersTool())
+    registry.register(CreateReminderTool())
+    registry.register(EditReminderTool())
+    registry.register(CompleteReminderTool())
     return registry
